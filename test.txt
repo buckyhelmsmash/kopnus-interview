@@ -1,0 +1,54 @@
+Tujuan
+Menguji keterampilan untuk membangun aplikasi web responsif dan berkinerja tinggi menggunakan React.js/Next.js + TypeScript + Tailwind CSS, integrasi RESTful API dengan backend Laravel, serta pola pikir optimasi performa — sesuai kebutuhan posisi Frontend (Web) Developer.
+Ketentuan Umum
+Stack wajib: React.js / Next.js + TypeScript + Tailwind CSS.
+Semua soal dikerjakan dalam SATU repository Git, di-push ke GitHub/GitLab.
+Buat commit yang rapi dan bermakna.
+README.md wajib berisi: deskripsi aplikasi, cara menjalankan, struktur folder, dan jawaban studi kasus (Soal 4).
+Jika ada asumsi, tuliskan di README.
+Kebijakan Penggunaan AI
+Di era AI, penggunaan alat bantu tidak dilarang — namun diatur agar penilaian tetap adil:
+Penggunaan AI (ChatGPT, GitHub Copilot, dsb.) diperbolehkan sebagai alat bantu pengerjaan.
+Kandidat WAJIB mencantumkan di README: bagian mana yang dibantu AI dan prompt yang digunakan.
+Setiap hasil pengerjaan wajib dipahami sepenuhnya oleh kandidat dan akan diverifikasi pada sesi demo & defense.
+Pengiriman jawaban AI mentah tanpa pemahaman akan dianggap gagal.
+Soal 1 — Kalkulator Faktorial (Rekursif)
+Buat halaman/komponen untuk menghitung nilai faktorial secara rekursif.
+Input: bilangan bulat positif.
+Output: hasil faktorial. Contoh: Masukkan nilai: 6 → Hasil: 720.
+Implementasikan fungsi rekursif dengan TypeScript yang tepat (type yang benar, tanpa any yang tidak perlu).
+Tangani edge case: 0! = 1, input negatif, dan input kosong.
+Soal 2 — Pengecek Palindrom
+Buat halaman/komponen untuk mengecek apakah sebuah kata/kalimat merupakan palindrom.
+Abaikan huruf kapital (case-insensitive), spasi, dan tanda baca.
+Contoh: "Katak" → palindrom; "contoh" → bukan palindrom.
+Tampilkan hasil dengan indikasi visual yang jelas.
+Soal 3 — Aplikasi E-Wallet (CashEase)
+Berdasarkan desain Figma berikut: https://www.figma.com/design/yssi3szWnG6f64W9ONygXV/E-Wallet-Mobile-Apps---CashEase--Community-?node-id=67-738&t=FlPDHoz0a4yRO5yj-0 — buat aplikasi web responsif dengan minimal 2 halaman:
+Home: menampilkan saldo dan informasi pengguna yang diambil dari RESTful API mock (buat sendiri, misal JSON file / json-server). Simulasikan delay agar loading state terlihat.
+Transfer: form transfer dengan ketentuan:
+Button "Proceed to transfer" nonaktif (disabled) secara default, aktif hanya saat user memasukkan nominal yang valid.
+Transfer TIDAK diperbolehkan jika nominal < Rp. 10.000 — tampilkan pesan error yang jelas.
+Setelah konfirmasi, kirim transaksi ke mock API dan tampilkan status sukses/gagal.
+Desain responsif (mobile & desktop), semirip mungkin dengan Figma.
+Implementasi:
+Komponen UI reusable (Button, Input, Card, dsb.).
+State management dengan React hooks yang bersih.
+Handle loading, error, dan empty state saat konsumsi API.
+Nilai tambah: penerapan best practice performa (code splitting, memoization bila diperlukan).
+Soal 4 — Studi Kasus Performa (jawab tertulis di README)
+Scenario: Aplikasi sudah digunakan oleh 100.000 users. Setelah release terbaru, beberapa user melaporkan bahwa halaman dashboard sangat lambat. API response hanya membutuhkan 200 ms, tetapi halaman membutuhkan 5–8 detik untuk tampil.
+Jawab pertanyaan berikut dengan contoh konkret dari pengalaman:
+Apa yang akan kamu cek terlebih dahulu?
+Bagaimana membedakan masalah frontend dan backend?
+Tools apa yang akan digunakan? (sebutkan yang spesifik untuk React/Next.js: React DevTools Profiler, Chrome DevTools Performance, Lighthouse, bundle analyzer, dsb.)
+Apa yang akan dicek di Chrome DevTools?
+Bagaimana cara mengecek JavaScript bundle di proyek Next.js?
+Bagaimana cara menemukan unnecessary rendering (re-render) dan cara memperbaikinya?
+Bagaimana memastikan fix yang dibuat benar-benar meningkatkan performa? (wajib berikan contoh pengukuran sebelum/sesudah dari pengalaman nyata.)
+Wajib disertai contoh nyata dari proyek yang pernah dikerjakan, dengan metrik & tools spesifik (angka before/after). Jawaban hipotetis/generik tanpa contoh nyata akan didiskualifikasi.
+Proses Penilaian
+Tahap 1 — Review take-home test berdasarkan Kriteria Penilaian di bawah.
+Tahap 2 — Sesi demo & defense (wajib, ±30–60 menit):
+Demo aplikasi berjalan.
+Kandidat menjelaskan keputusan desain dan alasan teknis di balik kodenya.
