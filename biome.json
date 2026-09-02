@@ -7,7 +7,14 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!**/public"]
+		"includes": [
+			"**",
+			"!**/public",
+			"!.agents",
+			"!.mcp.json",
+			"!skills-lock.json",
+			"!components.json"
+		]
 	},
 	"css": {
 		"parser": {

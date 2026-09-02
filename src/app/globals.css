@@ -46,6 +46,23 @@
 	--radius-2xl: calc(var(--radius) * 1.8);
 	--radius-3xl: calc(var(--radius) * 2.2);
 	--radius-4xl: calc(var(--radius) * 2.6);
+
+	/* CashEase brand tokens (mirrored from docs/design-system.md) */
+	--color-brand: var(--brand);
+	--color-brand-dark: var(--brand-dark);
+	--color-brand-tint: var(--brand-tint);
+	--color-success: var(--success);
+	--color-danger: var(--danger);
+	--color-link: var(--link);
+	--color-ink: var(--ink);
+
+	--radius-card: 12px;
+	--radius-sheet: 40px;
+	--radius-pill: 1000px;
+
+	--shadow-card: 0px 4px 25px rgba(26, 26, 26, 0.1);
+	--shadow-navbar: 0px -8px 20px rgba(172, 172, 172, 0.1);
+	--shadow-scan: 0px 4px 20px rgba(26, 26, 26, 0.2);
 }
 
 :root {
@@ -55,24 +72,33 @@
 	--card-foreground: oklch(0.145 0 0);
 	--popover: oklch(1 0 0);
 	--popover-foreground: oklch(0.145 0 0);
-	--primary: oklch(0.205 0 0);
-	--primary-foreground: oklch(0.985 0 0);
-	--secondary: oklch(0.97 0 0);
-	--secondary-foreground: oklch(0.205 0 0);
+	--primary: oklch(0.4443 0.1913 300.6);
+	--primary-foreground: oklch(1 0 0);
+	--secondary: oklch(0.9756 0.0107 300.9);
+	--secondary-foreground: oklch(0.4443 0.1913 300.6);
 	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
-	--accent: oklch(0.97 0 0);
-	--accent-foreground: oklch(0.205 0 0);
-	--destructive: oklch(0.577 0.245 27.325);
+	--muted-foreground: oklch(0.6907 0 0);
+	--accent: oklch(0.9756 0.0107 300.9);
+	--accent-foreground: oklch(0.4443 0.1913 300.6);
+	--destructive: oklch(0.6008 0.2416 26.9);
+
+	/* CashEase brand palette */
+	--brand: oklch(0.4443 0.1913 300.6);
+	--brand-dark: oklch(0.4096 0.1735 300.7);
+	--brand-tint: oklch(0.9756 0.0107 300.9);
+	--success: oklch(0.6839 0.1826 152.5);
+	--danger: oklch(0.6008 0.2416 26.9);
+	--link: oklch(0.6091 0.1099 185.7);
+	--ink: oklch(0.1822 0 0);
 	--border: oklch(0.922 0 0);
 	--input: oklch(0.922 0 0);
-	--ring: oklch(0.708 0 0);
+	--ring: oklch(0.4443 0.1913 300.6);
 	--chart-1: oklch(0.87 0 0);
 	--chart-2: oklch(0.556 0 0);
 	--chart-3: oklch(0.439 0 0);
 	--chart-4: oklch(0.371 0 0);
 	--chart-5: oklch(0.269 0 0);
-	--radius: 0.625rem;
+	--radius: 0.75rem;
 	--sidebar: oklch(0.985 0 0);
 	--sidebar-foreground: oklch(0.145 0 0);
 	--sidebar-primary: oklch(0.205 0 0);
