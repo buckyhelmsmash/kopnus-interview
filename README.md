@@ -174,21 +174,64 @@ _____
 
 ## Penggunaan AI (AI Usage Disclosure)
 
-Sesuai kebijakan, berikut bagian yang dibantu AI beserta prompt/skill yang digunakan. Seluruh hasil dipahami penuh dan siap dijelaskan pada sesi demo & defense.
+Sesuai kebijakan, berikut cerita bagaimana AI membantu pengerjaan ini — dituturkan mengikuti urutan pengerjaan sebenarnya. Seluruh hasil dipahami penuh dan siap dijelaskan pada sesi demo & defense.
 
-<!-- TODO(interview): Verify every row and paste the ACTUAL prompts you used in
-     the "Prompt / instruction" column. The rows below record which skill/tool
-     informed each area; replace the prompt text with your real wording. -->
+AI yang digunakan adalah **Zed coding agent**, dibantu sejumlah *skill* (instruksi terstruktur) dan *MCP server*. Alih-alih meminta AI menghasilkan kode mentah, saya menggunakannya sebagai pasangan kerja: saya yang mengambil keputusan desain, AI yang mengeksekusi dan mengusulkan.
 
-| Area / files | AI tool & skill | Prompt / instruction used |
+<!-- TODO(interview): Lengkapi setiap _____ dengan prompt/instruksi ASLI yang kamu
+     pakai. Paragraf di bawah sudah merekam skill/tool yang berperan di tiap tahap;
+     tinggal tempel wording promptmu. -->
+
+### Tahap persiapan (sebelum menulis kode)
+
+**1. Menyiapkan infrastruktur skill & spec.** Saya menjalankan skill **`setup-matt-pocock-skills`** untuk men-scaffold fondasi kerja berbasis skill: *issue tracker* lokal (`.scratch/`) dan tata letak dokumen domain (`CONTEXT.md`, `docs/adr/`). Ini yang membuat setiap soal bisa dikerjakan dari sebuah *spec* yang jelas.
+> Prompt yang saya berikan: _____
+
+**2. Memilih skill & tool pendukung.** Saya memakai skill **`ask-matt`** (sebuah *router* atas skill-skill di repo ini) untuk meminta rekomendasi skill dan tool yang cocok untuk proyek frontend ini. Hasilnya: saya memasang beberapa skill dan satu MCP server.
+> Prompt yang saya berikan: _____
+
+| Skill / Tool | Peran dalam proyek |
+| --- | --- |
+| `vercel-react-best-practices` | Panduan optimasi performa React/Next.js (waterfall, bundle, re-render) |
+| `vercel-composition-patterns` | Pola komposisi komponen agar reusable & mudah dirawat |
+| `web-design-guidelines` | Audit UI terhadap standar aksesibilitas & UX |
+| `shadcn` | Manajemen komponen shadcn/ui (add, compose, styling) |
+| Figma MCP server | Ekstraksi desain CashEase langsung dari file Figma |
+
+**3. Inisialisasi proyek (manual).** Setelah skill & tool siap, saya menjalankan sendiri `create-next-app` dan `shadcn init` (preset Nova) untuk membentuk kerangka proyek.
+> Prompt yang saya berikan: _____ *(dijalankan manual, bukan via AI)*
+
+**4. Menyusun spec untuk keempat soal.** Dengan **`ask-matt`** sebagai orkestrator, saya menghasilkan *spec* untuk masing-masing soal sebelum implementasi. Setiap spec disusun dengan bantuan skill yang relevan:
+> Prompt yang saya berikan: _____
+
+| Soal | Spec | Skill yang dipakai untuk menyusun spec |
 | --- | --- | --- |
-| Project scaffolding, design tokens | Zed agent | _____ |
-| Soal 3 — Figma design-system extraction (`docs/design-system.md`) | Figma MCP | _____ |
-| Soal 3 — CashEase screens & components | Zed agent | _____ |
-| Soal 3 — TanStack Query refactor (`src/lib/query/`) | `tanstack-query-fetching` skill | _____ |
-| Soal 1 — factorial (function + tests + page) | `implement` + `tdd` skills | _____ |
-| Soal 2 — palindrome (function + tests + page) | `implement` + `tdd` skills | _____ |
-| Code review before commits | `code-review` skill | _____ |
-| This README | `writing-for-agents` skill | _____ |
+| Soal 1 — Faktorial | `.scratch/factorial/spec.md` | `ask-matt`, `vercel-react-best-practices` |
+| Soal 2 — Palindrom | `.scratch/palindrome/spec.md` | `ask-matt`, `vercel-react-best-practices` |
+| Soal 3 — CashEase | `.scratch/cashease/spec.md` | `ask-matt`, `shadcn`, `vercel-composition-patterns`, `web-design-guidelines`, Figma MCP |
+| Soal 4 — Studi kasus performa | `.scratch/perf-case-study/spec.md` | `ask-matt`, `vercel-react-best-practices` |
+
+### Tahap pengerjaan
+
+**5. Fondasi proyek.** Saya mulai dengan menyiapkan proyek Next.js App Router, TypeScript, dan Tailwind, lalu menyusun design token CashEase ke `globals.css`.
+> Prompt yang saya berikan: _____
+
+**6. Ekstraksi desain (Soal 3).** Untuk membaca desain Figma CashEase secara akurat, saya menghubungkan **Figma MCP server** dan meminta AI mengekstrak warna, tipografi, spacing, serta struktur tiap frame ke `docs/design-system.md` — yang jadi acuan saat membangun UI.
+> Prompt yang saya berikan: _____
+
+**7. Membangun CashEase (Soal 3).** Berbekal design system tadi, AI membangun screen dan komponen reusable (Button, Input, Card, dan komponen CashEase) beserta mock API-nya.
+> Prompt yang saya berikan: _____
+
+**8. Refactor data fetching (Soal 3).** Saya ingin lapisan fetching yang rapi, jadi saya pakai skill **`tanstack-query-fetching`** untuk merefactor dari hook buatan sendiri ke stack TanStack Query berlapis (`src/lib/query/`): `ApiClient`, query-key factory, dan hook read/write dengan invalidation.
+> Prompt yang saya berikan: _____
+
+**9. Soal 1 & Soal 2.** Keduanya dikerjakan test-first memakai skill **`implement`** dan **`tdd`**: fungsi murni (`factorial`, `palindrome`) ditulis beserta test `bun:test` lebih dulu, baru halamannya.
+> Prompt yang saya berikan: _____
+
+**10. Review sebelum commit.** Sebelum meng-commit pekerjaan besar, saya menjalankan skill **`code-review`** untuk meninjau diff dari dua sisi: kesesuaian standar dan kesesuaian spec.
+> Prompt yang saya berikan: _____
+
+**11. README ini.** Disusun dengan bantuan skill **`writing-for-agents`** agar terstruktur dan jelas.
+> Prompt yang saya berikan: _____
 
 > **Catatan:** semua kode telah ditinjau, di-typecheck (`bun run build`), diuji (`bun test`), dan diverifikasi di browser sebelum di-commit.
