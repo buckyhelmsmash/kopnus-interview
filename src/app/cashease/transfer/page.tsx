@@ -1,5 +1,6 @@
-import { Building2, ChevronRight, Users } from "lucide-react";
+import { Building2, Users } from "lucide-react";
 import Link from "next/link";
+import { LatestTransfer } from "@/components/cashease/latest-transfer";
 import { PhoneFrame, PurpleScreen } from "@/components/cashease/purple-screen";
 import { ScreenHeader } from "@/components/cashease/screen-header";
 
@@ -37,17 +38,11 @@ export default function TransferTypePage() {
 					</div>
 				</div>
 
-				<section className="flex flex-col gap-2">
+				<section className="flex flex-col gap-1">
 					<h2 className="font-heading text-xl font-bold text-ink">
 						Latest Transfer
 					</h2>
-					<Link
-						href="/cashease/transfer/friends"
-						className="flex items-center justify-between rounded-2xl py-3 text-muted-foreground"
-					>
-						<span>Choose a contact to transfer</span>
-						<ChevronRight className="size-5" />
-					</Link>
+					<LatestTransfer />
 				</section>
 			</PurpleScreen>
 		</PhoneFrame>
