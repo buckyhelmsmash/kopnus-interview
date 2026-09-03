@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 // SIN #2: heavy widgets imported statically, so Recharts + maplibre-gl land in
 // this route's first-load JS bundle whether or not the user scrolls to them.
 import { ActivityList } from "@/components/dashboard/activity-list";
@@ -83,9 +84,21 @@ function StatsHeader() {
 }
 
 function ChartWidget({ year }: { year: string }) {
-	// The filter value is passed down from the root (see SIN #3) but the fetch
-	// ignores it here for simplicity; the point is the re-render, below.
-	const { data } = useEffectFetch<YearlyPoint[]>("/api/dashboard/yearly");
+	// SIN #4: the query key carries a value that changes on every render. Here a
+	// fresh `Date` object is baked into the key. TanStack hashes keys, and a new
+	// timestamp each render hashes differently every time, so TanStack thinks the
+	// input changed and refetches — endlessly, on every re-render (and SIN #3
+	// guarantees plenty of those). This is the class of bug that hid in the real
+	// project: a non-stable value (a Date, a new object, an inline function) slips
+	// into the key. Watch the yearly request refire without end in the Query
+	// Devtools / Network tab.
+	const { data } = useQuery({
+		queryKey: ["before-yearly", year, new Date()],
+		queryFn: () =>
+			fetch(`/api/dashboard/yearly?upto=${year}`).then(
+				(r) => r.json() as Promise<YearlyPoint[]>,
+			),
+	});
 	return (
 		<div>
 			<p className="mb-2 text-xs text-muted-foreground">Tahun aktif: {year}</p>
@@ -114,12 +127,6 @@ export default function BeforeDashboard() {
 	// only the chart cares about the year.
 	const [year, setYear] = useState("2024");
 
-	// SIN #4: an unstable object rebuilt on every render. If this were used in a
-	// query key (as it was in the real bug), it would look different each render
-	// and trigger an endless refetch loop, because {a} !== {a} by reference.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally unstable to demonstrate the bug
-	const unstableFilter = useMemo(() => ({ year }), [year, {}]);
-
 	return (
 		<main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
 			<header className="flex flex-col gap-1">
@@ -132,7 +139,7 @@ export default function BeforeDashboard() {
 				<p className="text-sm text-muted-foreground">
 					Fetch per-komponen via useEffect, import statis, state filter di root,
 					dan key tidak stabil. Buka Network tab dan React Profiler untuk
-					melihat requestnya. Filter aktif: {unstableFilter.year}
+					melihat requestnya. Filter aktif: {year}
 				</p>
 			</header>
 

@@ -62,9 +62,11 @@ function StatsHeader() {
 
 // FIX #3 + #4: the year filter state lives HERE, inside the only widget that
 // needs it, so changing the year re-renders just this subtree, not the map or
-// the stat cards. FIX #4: the query key is built from the plain `year` string
-// (dashboardKeys.yearly(year)), so it stays reference-equal across renders and
-// never triggers a refetch loop.
+// the stat cards. FIX #4: the query key is dashboardKeys.yearly(year), built
+// from the plain `year` string. TanStack compares keys structurally, so a key
+// of plain primitives stays equal for the same year — no refetch loop. The
+// `before` bug was stuffing a freshly-built object into the key each render,
+// which never compares equal.
 const YEARS = ["2022", "2023", "2024"];
 
 function ChartWidget() {

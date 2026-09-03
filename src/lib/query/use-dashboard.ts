@@ -29,7 +29,10 @@ export function useDashboardStats() {
 export function useDashboardYearly(year?: string) {
 	return useQuery({
 		queryKey: dashboardKeys.yearly(year),
-		queryFn: () => ApiClient.get<YearlyPoint[]>("/api/dashboard/yearly"),
+		queryFn: () =>
+			ApiClient.get<YearlyPoint[]>(
+				`/api/dashboard/yearly${year ? `?upto=${year}` : ""}`,
+			),
 	});
 }
 
