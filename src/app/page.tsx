@@ -14,7 +14,7 @@ const SOAL = [
 		title: "Palindrome Checker",
 		desc: "Case- and punctuation-insensitive palindrome check.",
 		href: "/palindrome",
-		ready: false,
+		ready: true,
 	},
 	{
 		n: 3,
