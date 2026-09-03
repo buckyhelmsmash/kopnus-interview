@@ -76,6 +76,7 @@ export const transactions: Transaction[] = [
 		amount: 600_000,
 		direction: "out",
 		kind: "transfer",
+		avatar: avatar("Alexandria"),
 	},
 	{
 		id: "t_2",
@@ -92,6 +93,7 @@ export const transactions: Transaction[] = [
 		amount: 250_000,
 		direction: "out",
 		kind: "transfer",
+		avatar: avatar("Brian Kusuma"),
 	},
 	{
 		id: "t_4",
@@ -108,5 +110,6 @@ export const transactions: Transaction[] = [
 		amount: 175_000,
 		direction: "out",
 		kind: "transfer",
+		avatar: avatar("Citra Dewi"),
 	},
 ];

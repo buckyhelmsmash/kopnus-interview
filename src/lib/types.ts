@@ -32,6 +32,11 @@ export interface Transaction {
 	direction: TransactionDirection;
 	/** Which visual chip/icon to render for the row. */
 	kind: "transfer" | "topup" | "withdraw" | "bank";
+	/**
+	 * Counterparty avatar for peer transfers. Present → the row shows the
+	 * contact's photo; absent (top-up, withdraw) → it falls back to an icon chip.
+	 */
+	avatar?: string;
 }
 
 export interface TransferRequest {
