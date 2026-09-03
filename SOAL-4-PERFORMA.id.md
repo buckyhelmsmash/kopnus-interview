@@ -1,92 +1,65 @@
 # Soal 4 — Studi Kasus Performa
 
-## Proyek asal cerita ini
-
-Contoh di bawah saya ambil dari aplikasi produksi yang benar-benar saya kerjakan: sebuah platform pengembangan UMKM. Aplikasi web yang berat di sisi dashboard, tempat pelaku usaha kecil mengelola program mereka, sementara staf meninjau dan membuat laporannya. Banyak halamannya berupa dashboard lebar penuh widget (grafik, editor teks kaya, peta), persis jenis halaman yang digambarkan soal ini.
-
-Stack yang relevan di sini: Next.js 15.3.3 (App Router, Turbopack), React 19, TanStack Query, Zustand untuk auth. Lalu tersangka biasa saat dashboard terasa berat: dua library grafik (`react-apexcharts` dan `recharts`), editor teks kaya (`lexical` dan `@tiptap`), serta library peta (`maplibre-gl`).
-
-Kontribusi saya ada di lapisan data fetching. Saya memindahkan tim dari panggilan `fetch` yang berserakan di tiap komponen ke sebuah **stack TanStack Query berlapis** yang kecil. Bentuknya sama seperti yang saya pakai di repo interview ini (`src/lib/query/`), dan `ApiClient` aslinya bisa dibaca di `src/lib/query/api-client.ts`.
-
-### Arsitektur fetching (tiga lapis, tiap lapis tahu satu hal)
-
-- **`ApiClient`** — satu pembungkus tipis di atas `fetch`, satu-satunya tempat yang tahu cara membuat request. Ia melempar error saat gagal (supaya `useQuery`/`useMutation` bisa memunculkan error itu), dan di aplikasi produksi ia juga menempelkan token login ke setiap request serta membuka amplop `{ result: ... }` dari API. (`ApiClient` di repo interview ini file yang sama, dikurangi auth dan amplop, karena mock CashEase tidak punya keduanya. Lihat catatan cakupan di bagian atas `api-client.ts`.)
-- **Query-key factory + hooks** — satu-satunya tempat aturan caching tinggal. Cache key yang stabil per resource, `useQuery` untuk membaca, `useMutation` untuk menulis, dengan invalidasi saat sukses.
-- **Komponen** — meminta `data`/`isLoading`/`error` ke sebuah hook, dan tidak memegang logika fetching sama sekali.
-
-Kenapa saya bangun ini: fetching berserakan, tiap komponen menjalankan request-nya sendiri, dan data sering tidak segar setelah simpan sampai halaman di-reload manual. Satu pintu masuk membuat debugging jadi mudah, dan cache key yang stabil menjaga data tetap segar. Alat yang saya andalkan untuk mengejar masalah cache adalah TanStack Query Devtools, panel kecil yang menampilkan kondisi tiap request yang tersimpan.
-
-## Ringkasan gejala
-
 > **Scenario:** Aplikasi sudah digunakan oleh 100.000 users. Setelah release terbaru, beberapa user melaporkan bahwa halaman dashboard sangat lambat. API response hanya membutuhkan 200 ms, tetapi halaman membutuhkan 5–8 detik untuk tampil.
 
-API balik dalam 200 milidetik tapi halaman butuh 5 sampai 8 detik untuk muncul. Backend-nya cepat, jadi masalahnya ada di sisi klien, di browser. Angka 200 ms itu cuma waktu server memproses satu request. Ia tidak bicara soal berapa banyak request dirangkai berurutan, berapa banyak JavaScript yang harus diunduh dan diproses sebelum ada yang muncul, dan berapa kali halaman menggambar ulang dirinya. Tiga hal itu tempat 5 detik yang hilang bersembunyi.
+## Real Proyek asal jawaban ini
 
-## 1. Yang saya cek lebih dulu
+Contoh di bawah saya ambil dari aplikasi produksi yang saya kerjakan: sebuah platform digitalisasi Program Magang mahasiswa pada sebuah UMKM.  Banyak halamannya berupa dashboard penuh widget seperti chart, editor teks, dan peta, mirip halaman yang disebut di soal.
 
-> **Pertanyaan:** Apa yang akan kamu cek terlebih dahulu?
+Stack yang dipakai: Next.js 15.3.3 (App Router, Turbopack), React 19, TanStack Query, Zustand. Library yang biasanya bikin dashboard berat: dua library chart (`react-apexcharts` dan `recharts`), editor teks (`lexical` dan `@tiptap`), dan library peta (`maplibre-gl`).
 
-Saya mulai dari yang paling murah dilihat.
+Kontribusi saya ada di lapisan data fetching. Saya merefactor dari `fetch` yang berserakan di tiap komponen menjadi terpusat dan diberi penanda tiap query untuk memudahkan manajemen. Bentuknya sama seperti yang saya pakai di repo interview ini (`src/lib/query/`), dan `ApiClient` aslinya bisa dibaca di `src/lib/query/api-client.ts`. Tiga lapis, tiap lapis tahu satu hal:
 
-Pertama, waterfall Network di Chrome DevTools. Tab Network mendaftar tiap request yang dibuat halaman dan menggambarnya sebagai batang di garis waktu, jadi kelihatan mana yang saling menunggu. Pertanyaannya: 200 ms itu satu request, atau dashboard menembakkan selusin request beruntun? Dashboard kami penuh widget, dan tiap widget mengambil datanya sendiri. Kalau request-request itu saling menunggu alih-alih jalan bersamaan, 12 request kali 200 ms plus jeda jaringan sudah beberapa detik sendiri.
+- **`ApiClient`** — pembungkus tipis di atas `fetch`, satu-satunya tempat yang tahu cara membuat request.  throw error saat gagal supaya `useQuery`/`useMutation` bisa menampilkannya. Di aplikasi produksi juga menempelkan token login ke tiap request dan membuka amplop `{ result: ... }` dari API. (`ApiClient` di repo interview ini file yang sama, dikurangi auth dan amplop, karena mock CashEase tidak punya keduanya.)
+- **Query-key factory + hooks** — Reusable hooks dan manajemen key yang terpusat. Cache key stabil per resource, `useQuery` untuk baca, `useMutation` untuk tulis, dengan invalidasi saat sukses.
+- **Komponen** — minta `data`/`isLoading`/`error` ke hook, tidak memegang logika fetching sama sekali.
+- **Menghilankan Request ganda atau berulang** 
 
-Kedua, ukuran dan waktu JavaScript. Turbopack cepat saat development, tapi versi yang dikirim ke user asli bisa jauh lebih berat. Grafik, editor, dan peta itu besar, dan gampang terlewat kalau cuma dites di lokal.
+## Jawaban
 
-Ketiga, saya pastikan letak lambatnya. Lambat cuma di load pertama menunjuk ke unduhan besar atau rantai request. Lambat tiap kali ganti filter atau pindah tab menunjuk ke halaman yang menggambar ulang lebih dari seharusnya.
+Setelah saya pelajari, sub-pertanyaan 1 sampai 7 saling berkaitan. Kalau dijawab per point jawabannya akan berulang, jadi saya rangkum jadi satu alur.
 
-Keempat, karena soal bilang "setelah release terbaru", saya bandingkan kode release sebelumnya dengan yang sekarang pakai `git diff`. Ada library berat yang menyelinap masuk? Ada data hook yang mulai refetch berulang? Ada komponen yang kehilangan optimasi penahan gambar ulang? Regresi biasanya muncul tepat di sini.
+### Yang saya cek dahulu
 
-## 2. Membedakan frontend dan backend
+Dari pertanyaan, bug terjadi di halaman dashboard. Asumsi saya, dashboard pada umumnya punya lebih dari satu komponen chart atau diagram yang berat, contohnya peta berbasis canvas atau chart. Untuk hidrasi data tiap komponen di dashboard, kemungkinan ada dua cara: bisa dalam satu API request yang merespons data untuk keseluruhan komponen, atau tiap komponen memanggil API sendiri-sendiri.
 
-> **Pertanyaan:** Bagaimana membedakan masalah frontend dan backend?
+Klaim di soal, response API hanya 200 ms tapi load halaman dashboard sampai 5-8 detik. Kalau pakai cara pertama dan load masih makan 5-8 detik, kemungkinan komponen diagram di dashboard ukurannya terlalu besar. Kalau pakai cara kedua dan makan 5-8 detik, kemungkinan ada cacat logika di pemanggilan fungsi fetching yang tidak jalan paralel melainkan saling menunggu. Untuk mengeceknya bisa dilihat dari timeline network waterfall di Chrome DevTools, untuk tiap request API maupun loading page-nya.
 
-| Sinyal | Vonis |
-|---|---|
-| Waktu respons API sendiri di tab Network memang besar | Backend |
-| Server lama mengirim byte pertama, tapi unduhannya sendiri cepat | Backend atau jaringan |
-| Tiap panggilan API 200 ms tapi ada 15, satu demi satu | Frontend (cara request diatur) |
-| Mengunduh dan menjalankan JavaScript makan waktu lama | Frontend (ukuran bundle atau gambar ulang) |
-| Server balik cepat tapi menjalankan JavaScript mendominasi rekaman | Frontend |
+Untuk komponen berukuran besar yang butuh waktu lama untuk load, bisa ditangani dengan dynamic import dan placeholder komponen dulu.
 
-Cara tercepat memisah keduanya: buka tab Network dan baca garis waktu per request. Kalau tiap request memang 200 ms seperti klaim soal, backend sehat. Yang tersisa: berapa request yang menembak, kapan mereka menembak, dan seberat apa JavaScript-nya. Semua itu wilayah frontend.
+Karena bug terjadi setelah rilisan terbaru, saya bisa cek pakai `git diff`, di bagian mana yang berubah, apakah ada penambahan library baru yang bikin berat.
 
-Ini bukan teori buat saya. Sebelum kami memusatkan ke `ApiClient` plus TanStack Query, beberapa halaman memukul endpoint yang sama beberapa kali karena tiap komponen fetch sendiri tanpa cache bersama. Begitu pindah ke hooks bersama, request-request duplikat itu hilang. Dua komponen yang minta data sama runtuh jadi satu request. Itu dedup bawaan TanStack sedang bekerja.
+### Membedakan masalah frontend dan backend
 
-## 3. Tools yang saya pakai
+Masalah backend: kalau dilihat dari timeline network respons API-nya lama, jelas itu masalah backend.
 
-> **Pertanyaan:** Tools apa yang akan digunakan? (sebutkan yang spesifik untuk React/Next.js: React DevTools Profiler, Chrome DevTools Performance, Lighthouse, bundle analyzer, dsb.)
+Masalah frontend: respons API 200 ms tapi ada 10 request saling tunggu, atau download JavaScript di halaman lama atau berkali-kali.
 
-Tab Network Chrome DevTools untuk garis waktu request, jumlah request, lama tiap request, ukurannya, dan mengendus duplikat atau rantai.
+Sebelum kami memusatkan ke `ApiClient` plus TanStack Query, beberapa halaman memukul endpoint yang sama beberapa kali karena tiap komponen fetch sendiri tanpa cache bersama. Begitu pindah ke hooks bersama, request duplikat itu hilang, dua komponen yang minta data sama digabung jadi satu request oleh dedup bawaan TanStack.
 
-Tab Performance Chrome DevTools. Kamu tekan rekam, reload halaman, dan ia menggambar garis waktu semua yang dilakukan browser, terpecah jadi menjalankan JavaScript, menyusun layout, dan mengecat piksel. Ia juga menandai "long task", satu potongan kerja yang memblokir halaman terlalu lama.
+### Tools yang digunakan
 
-React DevTools Profiler untuk merekam satu interaksi dan melihat komponen mana yang menggambar ulang, berapa kali, dan kenapa. Nyalakan "Record why each component rendered", itu setelan yang benar-benar berguna.
+- **Chrome DevTools Network tab** — cek timeline request, jumlah request, lama request, ukuran request, dan request duplikat.
+- **Chrome DevTools Performance tab** — lihat task browser di halaman yang dikunjungi seperti rendering layout, pixel painting, JavaScript task, timeline frame dan animasi. Otomatis mendeteksi task mana yang lama atau berat.
+- **React DevTools** — cek rendering tiap komponen.
+- **TanStack Query Devtools** — cek cache dari tiap request.
+- **Chrome Lighthouse** — scoring page load speed, untuk pembanding apakah ada peningkatan sebelum dan sesudah fixing.
+- **`next build`** — setelah build selesai juga dilampirkan berapa ukuran JavaScript tiap page.
+- **`@next/bundle-analyzer`** — cek ukuran library JavaScript mana yang besar.
 
-TanStack Query Devtools untuk mengamati kondisi tiap request tersimpan (segar, basi, atau sedang fetch), apakah ada yang refetch berulang, dan apakah cache key-nya stabil. Ini senjata utama saya waktu memburu bug "data tidak segar setelah simpan".
+### Yang dicek di Chrome DevTools
 
-`@next/bundle-analyzer`, alat yang menggambar peta JavaScript kamu berdasarkan ukuran supaya kelihatan library mana yang bikin gemuk.
+Di Network tab saya cek apakah request jalan paralel atau saling tunggu dalam rantai, file JavaScript mana yang paling besar, dan request mana yang macet karena browser membatasi jumlah request yang jalan sekaligus.
 
-Lighthouse, alat bawaan Chrome yang memberi skor kecepatan muat halaman. Saya jalankan sebelum dan sesudah perbaikan supaya punya angka yang bisa dibandingkan, bukan menebak. Ia melaporkan hal seperti berapa lama sampai user melihat konten utama di layar, dan berapa lama halaman beku tidak bisa merespons klik.
+Di Performance tab saya cari long task, potongan kerja yang membekukan halaman lebih dari sekejap, biasanya JavaScript berat atau re-render besar. Saya juga baca berapa banyak waktu yang masuk ke menjalankan JavaScript versus rendering. Kalau JavaScript dominan, itu targetnya.
 
-Perintah `next build` juga mencetak tabel berapa banyak JavaScript yang dikirim tiap halaman, langsung di terminal, jadi jangan dilewat.
+Coverage tab juga berguna, ia menunjukkan berapa banyak JavaScript terunduh yang tidak pernah dijalankan halaman. Kalau chart, editor, dan peta terunduh semua padahal bagian atas layar cuma menampilkan beberapa angka, itu kandidat kuat untuk dimuat belakangan.
 
-## 4. Yang saya lihat di Chrome DevTools
+### Cek JavaScript bundle di Next.js
 
-> **Pertanyaan:** Apa yang akan dicek di Chrome DevTools?
+Mulai dari output `next build`. Ia mencetak berapa banyak JavaScript yang dimuat tiap halaman, dan halaman dashboard yang jauh lebih besar dari yang lain langsung kelihatan.
 
-Di tab Network saya memburu tiga temuan: apakah request jalan bersamaan atau menunggu dalam rantai, file JavaScript mana yang terbesar, dan request mana yang macet karena browser membatasi jumlah yang jalan sekaligus.
-
-Di tab Performance saya memburu long task, potongan kerja yang membekukan halaman lebih dari sekejap, biasanya JavaScript berat atau gambar ulang besar, lalu membaca berapa banyak waktu masuk ke menjalankan JavaScript versus menggambar. Kalau JavaScript mendominasi, itu targetnya. Rekaman juga menunjukkan berapa lama halaman beku sebelum bisa merespons klik.
-
-Tab Coverage sering terlupa padahal berguna. Ia menunjukkan berapa banyak JavaScript terunduh yang tidak pernah benar-benar dijalankan halaman. Kalau grafik, editor, dan peta semuanya terunduh padahal bagian atas layar cuma menampilkan beberapa angka, itu kandidat kuat untuk dimuat belakangan alih-alih di depan.
-
-## 5. Mengecek ukuran JavaScript di Next.js
-
-> **Pertanyaan:** Bagaimana cara mengecek JavaScript bundle di proyek Next.js?
-
-Mulai dari keluaran `next build`. Ia mencetak berapa banyak JavaScript yang dimuat tiap halaman, dan halaman dashboard yang jauh lebih gemuk dari yang lain langsung menonjol.
-
-Setelah itu pakai `@next/bundle-analyzer`. Bungkus `next.config.ts`:
+Setelah itu pakai `@next/bundle-analyzer`. Wrap `next.config.ts`:
 
 ```ts
 import withBundleAnalyzer from '@next/bundle-analyzer'
@@ -94,9 +67,9 @@ const analyzer = withBundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })
 export default analyzer(nextConfig)
 ```
 
-Jalankan `ANALYZE=true next build`, lalu baca peta ukuran yang ia buka di browser. Cari library besar yang termuat di tampilan halaman pertama padahal tidak perlu. Di proyek kami tersangka utamanya library grafik, editor, dan peta. Tab Coverage memastikan mana dari itu yang benar-benar jalan di dashboard dan mana yang cuma ikut menumpang.
+Jalankan `ANALYZE=true next build`, lalu baca peta ukuran yang dibuka di browser. Cari library besar yang termuat di tampilan halaman pertama padahal tidak perlu. Di proyek kami tersangka utamanya library chart, editor, dan peta.
 
-Perbaikan yang saya ambil:
+Fixing yang saya ambil:
 
 Muat komponen berat hanya saat dibutuhkan, bukan di depan. Di Next.js itu `dynamic()`:
 
@@ -104,78 +77,67 @@ Muat komponen berat hanya saat dibutuhkan, bukan di depan. Di Next.js itu `dynam
 const ProgramChart = dynamic(() => import('./program-chart'), { ssr: false, loading: () => <ChartSkeleton /> })
 ```
 
-Grafik, editor, dan peta tidak pantas ada di hal pertama yang diunduh user. Muat saat diminta.
+Pastikan juga satu halaman pakai satu library chart, bukan `apexcharts` dan `recharts` di halaman yang sama. Dan impor hanya bagian library yang dipakai, `import debounce from 'lodash/debounce'`, bukan seluruhnya dengan `import _ from 'lodash'`.
 
-Pastikan satu halaman pakai satu library grafik, bukan `apexcharts` dan `recharts` di halaman yang sama. Itu jebakan klasik yang gampang lolos review.
+### Menemukan unnecessary re-render dan memperbaikinya
 
-Impor hanya bagian library yang kamu pakai, `import debounce from 'lodash/debounce'`, bukan seluruhnya dengan `import _ from 'lodash'`.
+Untuk menemukan re-render yang tidak perlu saya pakai React DevTools dan TanStack Query Devtools.
 
-## 6. Menemukan gambar ulang yang tidak perlu dan memperbaikinya
+Di React DevTools Profiler, nyalakan "Highlight updates when components render" dan "Record why each component rendered", lalu rekam sambil ganti filter atau tab. Kalau satu klik filter menyebabkan selusin widget re-render padahal datanya tidak berubah, itu kerja sia-sia.
 
-> **Pertanyaan:** Bagaimana cara menemukan unnecessary rendering (re-render) dan cara memperbaikinya?
-
-Ketika React menggambar ulang komponen yang tidak perlu, halaman kerja ekstra untuk hasil nihil. React menyebutnya re-render. Ada dua cara menemukan yang boros.
-
-Pertama, React DevTools Profiler. Nyalakan "Highlight updates when components render" dan "Record why each component rendered", lalu rekam sambil mengganti filter atau tab. Kalau satu klik filter menggambar ulang selusin widget yang datanya tidak berubah, itu kerja sia-sia.
-
-Kedua, TanStack Query Devtools. Kalau satu request tersimpan terus fetch padahal tidak ada yang meminta, cache key-nya biasanya tidak stabil. Begini maksudnya. TanStack Query mengenali tiap request tersimpan lewat sebuah "key", dan kalau key itu terlihat beda di tiap render, TanStack mengira ini request baru dan fetch lagi. Ini terjadi ketika key memuat objek atau array yang dibangun baru tiap kali:
+Di TanStack Query Devtools, kalau satu request tersimpan terus fetch padahal tidak ada yang minta, cache key-nya biasanya tidak stabil. TanStack Query mengenali tiap request tersimpan lewat sebuah key, dan kalau key itu beda di tiap render, TanStack mengira itu request baru dan fetch lagi. Ini terjadi kalau key memuat objek atau array yang dibangun baru tiap kali:
 
 ```ts
 useQuery({ queryKey: ['someList', { id, filter: { date } }], ... })
 ```
 
-Objek `filter` itu objek baru di tiap render walau `date`-nya sama, jadi key-nya tidak pernah dianggap sama. Ini persis kelas bug yang saya tangani waktu membenahi fetching.
+Objek `filter` itu objek baru di tiap render walau `date`-nya sama, jadi key-nya tidak pernah dianggap sama.
 
-Beberapa penyebab yang benar-benar saya temui di proyek ini:
+Beberapa penyebab yang saya temui di proyek ini:
 
-Cache key tidak stabil, seperti di atas. Perbaikannya: bangun key dari nilai polos (string, angka) alih-alih objek baru, atau bungkus pakai `useMemo` supaya React memakai ulang objek yang sama antar gambar ulang. Ini juga alasan saya memindahkan pembangunan query-parameter ke satu helper bersama, supaya bentuknya konsisten dan tidak melahirkan objek baru sembarangan.
+- Cache key tidak stabil, seperti di atas. Fixing-nya bangun key dari nilai polos (string, angka) alih-alih objek baru, atau wrap pakai `useMemo`. Ini juga alasan saya memindahkan pembangunan query-parameter ke satu helper bersama, supaya bentuknya konsisten.
+- Mengoper objek atau fungsi baru ke komponen anak di tiap render, yang membatalkan optimasi yang harusnya melewatinya. Fixing-nya `useCallback` untuk fungsi dan `useMemo` untuk objek.
+- Komponen yang subscribe ke seluruh store re-render begitu ada perubahan apa pun. Fixing-nya subscribe hanya ke slice yang dibutuhkan, `useAuthStore(s => s.token)` bukan ambil semuanya.
+- State ditaruh terlalu tinggi di tree. Kalau state filter tinggal di parent, mengubahnya me-re-render seluruh cabang di bawahnya. Turunkan state itu sedekat mungkin ke tempat ia dipakai.
 
-Mengoper objek atau fungsi baru ke komponen anak di tiap gambar ulang, yang menggagalkan optimasi yang seharusnya melewatinya. Perbaikannya `useCallback` untuk fungsi dan `useMemo` untuk objek, keduanya memakai ulang nilai yang sama antar gambar ulang.
+Catatan: React 19 dengan compiler barunya menghapus banyak kerja manual di atas, tapi cache key yang stabil dan subscribe store yang sempit tetap tanggung jawab kita.
 
-Komponen yang berlangganan ke seluruh store bersama menggambar ulang begitu ada perubahan apa pun. Perbaikannya: berlangganan hanya ke potongan yang kamu butuh, `useAuthStore(s => s.token)` bukan mengambil semuanya.
+### Memastikan fix benar-benar meningkatkan performa
 
-State ditaruh terlalu tinggi di pohon. Kalau state filter tinggal di parent, mengubahnya menggambar ulang seluruh cabang di bawahnya. Dorong state itu sedekat mungkin ke tempat ia dipakai.
+Aturan yang saya pegang: jangan bilang "lebih cepat" tanpa angka. Bisa dibandingkan dengan score Lighthouse yang didapat sebelum dan sesudah fixing, diukur dengan cara yang sama pada kondisi yang sama (Lighthouse bisa simulasi ponsel lambat dan jaringan lambat, jadi angkanya bisa diulang).
 
-Satu catatan: React 19 dengan compiler barunya menghapus banyak kerja manual di atas, tapi cache key yang stabil dan langganan store yang sempit tetap tanggung jawabmu. Compiler tidak menutup dua hal itu.
+### Demo before/after di repo ini
 
-## 7. Membuktikan sebuah fix benar-benar mempercepat, bukan cuma terasa cepat
+Karena saya sudah tidak punya akses ke project lama, saya buat ulang skenarionya di repo ini dalam bentuk kecil supaya reviewer bisa cek angkanya sendiri. Dua halaman dengan widget dan mock API yang sama, yang membeda cuma tekniknya:
 
-> **Pertanyaan:** Bagaimana memastikan fix yang dibuat benar-benar meningkatkan performa? (wajib berikan contoh pengukuran sebelum/sesudah dari pengalaman nyata.)
+- **`/dashboard/before`** — sengaja jelek. Tiap widget fetch sendiri via `useEffect` + `fetch` tanpa cache bersama (dua widget menembak `/api/dashboard/stats` masing-masing, jadi kelihatan duplikat di Network), chart dan peta di-import statis, state filter di root, dan ada object key yang tidak stabil.
+- **`/dashboard/after`** — sudah diperbaiki. Shared TanStack Query hooks (dedup lewat `dashboardKeys`), chart dan peta lewat `dynamic({ ssr: false })` plus skeleton, state filter diturunkan ke widget yang butuh, dan cache key dari nilai polos.
 
-Aturan yang saya pegang: jangan pernah bilang "lebih cepat" tanpa angka. Ukur dengan cara sama pada kondisi sama (Lighthouse bisa mensimulasikan ponsel lambat dan jaringan lambat, jadi angkanya jujur dan bisa diulang), rekam sebelum, terapkan fix, rekam sesudah.
+Widgetnya mengikuti dashboard project lama: empat stat card, chart tahunan (shadcn/Recharts), dan peta provinsi Indonesia pakai `@vis.gl/react-maplibre` dengan tile carto keyless (tanpa token). Tiap endpoint mock delay 200 ms, cocok dengan klaim "API 200 ms" di soal, jadi selisih waktunya murni dari frontend.
 
-### Contoh nyata dari proyek ini (kerja yang benar-benar saya lakukan dan ukur)
+Cara ambil angkanya:
 
-Kasusnya: request duplikat dan gambar ulang boros di sebuah halaman list yang saya pindahkan dari fetch manual ke stack `ApiClient` + TanStack Query. Sebelum dipusatkan, tiap komponen memanggil endpoint-nya sendiri tanpa cache bersama, dan setelah simpan data sering tidak segar sampai reload penuh. Yang saya ukur di tab Network dan React Profiler:
+1. `bun run build` untuk build biasa (Turbopack), lalu buka kedua halaman di browser.
+2. Untuk bundle map: `ANALYZE=true bunx next build --webpack` — di Next 16 `@next/bundle-analyzer` jalan di build webpack, bukan Turbopack. Laporannya keluar di `.next/analyze/client.html`.
+3. Network tab untuk hitung request dan duplikat di tiap halaman.
+4. React DevTools Profiler untuk hitung re-render saat ganti filter tahun.
+5. Lighthouse (preset mobile, throttled) di tiap halaman untuk FCP/LCP/TBT.
 
-| Metrik | Sebelum | Sesudah | Cara ukur |
+| Metrik | Before | After | Tool |
 |---|---|---|---|
-| Request saat membuka halaman list | ~11 (banyak duplikat endpoint yang sama) | ~4 | Tab Network, menghitung request |
-| Request duplikat ke endpoint sama | ya, 3 sampai 4 kali | 0, digabung TanStack Query | Tab Network plus Query Devtools |
-| Kesegaran data setelah create atau update | tidak konsisten, kadang perlu reload manual | otomatis, simpan menyuruh cache menyegarkan | Query Devtools, mengamati request jadi basi lalu refetch |
-| Gambar ulang saat pindah halaman | seluruh list menggambar ulang | hanya baris yang berubah | React Profiler |
+| Request saat load | _isi_ | _isi_ | Network tab |
+| Request duplikat ke endpoint sama | _isi_ | _isi_ | Network tab |
+| First Load JS `/dashboard` | _isi_ | _isi_ | bundle-analyzer |
+| Re-render saat ganti filter | _isi_ | _isi_ | React Profiler |
+| LCP (mobile, throttled) | _isi_ | _isi_ | Lighthouse |
 
-Fix pindah-halaman datang dari menyuruh TanStack Query tetap menampilkan data halaman sebelumnya selagi yang berikutnya dimuat, plus melacak nomor halaman secara lokal. Hasilnya, berpindah antar halaman tidak mengedip ke layar loading penuh dan tidak menggambar ulang seluruh tabel.
-
-### Membuktikan fix bundle untuk gejala di soal (metode, bukan hasil kerja solo)
-
-Satu pembedaan jujur: angka halaman list di atas kerja yang saya lakukan dan ukur sendiri. Dashboard 5–8 detik itu skenario yang soal ini karang. Saya tidak pernah mengirim fix dashboard terukur dari 8 detik ke bawah 2,5 detik sebagai hasil kerja solo. Jadi di sini saya tunjukkan metode yang akan saya jalankan, diambil dari tooling proyek yang sama dan fix dynamic import yang sudah saya terapkan ke halaman-halaman berat di sana:
-
-Ambil baseline dulu. Jalankan `next build`, catat berapa banyak JavaScript yang dimuat halaman dashboard, lalu jalankan Lighthouse dengan simulasi ponsel lambat dan catat angka kecepatannya.
-
-Terapkan fix. Muat grafik, editor, dan peta saat diminta. Pakai satu library grafik. Buat request yang independen jalan bersamaan alih-alih dalam rantai. Stabilkan cache key.
-
-Ukur lagi dengan setelan identik.
-
-Batas lulusnya jelas. JavaScript dashboard turun banyak, user melihat konten utama di bawah 2,5 detik, dan waktu beku turun tajam. Kalau angkanya tidak bergerak, fix-nya belum benar dan tidak boleh di-merge. Buat saya ini bukan formalitas. Merge tanpa angka cuma mendorong masalah ke release berikutnya.
-
-Laporan yang saya kirim ke tim selalu berbentuk sama: satu tabel sebelum/sesudah dengan tools dan angkanya, plus tangkapan layar sebelum-sesudah dari rekaman Performance supaya long task yang hilang terlihat mata.
+_Angka before/after saya isi setelah pengukuran._
 
 ## Ceklis cepat
 
-- [ ] Cek garis waktu Network. Satu request atau banyak dalam rantai?
+- [ ] Cek timeline Network. Satu request atau banyak yang saling tunggu?
 - [ ] Cek rekaman Performance. Long task dan berapa banyak waktu masuk ke JavaScript.
-- [ ] `next build` plus `@next/bundle-analyzer`. Buru library berat di load halaman pertama.
-- [ ] Muat grafik, editor, dan peta saat diminta, dan pakai satu library grafik per halaman.
-- [ ] React Profiler plus Query Devtools. Kejar gambar ulang boros dan cache key tidak stabil.
-- [ ] Ukur sebelum dan sesudah pakai Lighthouse plus `next build` pada setelan identik, lampirkan angkanya.
+- [ ] `next build` plus `@next/bundle-analyzer` (`--webpack` di Next 16). Cari library berat di load halaman pertama.
+- [ ] Muat chart, editor, dan peta saat dibutuhkan, dan pakai satu library chart per halaman.
+- [ ] React DevTools plus Query Devtools. Cari re-render boros dan cache key tidak stabil.
+- [ ] Ukur sebelum dan sesudah pakai Lighthouse plus `next build` pada setelan yang sama.

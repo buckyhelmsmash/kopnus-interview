@@ -26,8 +26,8 @@ const SOAL = [
 	{
 		n: 4,
 		title: "Performance Case Study",
-		desc: "Written answer in the project README.",
-		href: "https://github.com/buckyhelmsmash/kopnus-interview#soal-4--performance-case-study-studi-kasus-performa",
+		desc: "Written answer plus a live before/after dashboard demo.",
+		href: "/dashboard",
 		ready: true,
 	},
 ];
