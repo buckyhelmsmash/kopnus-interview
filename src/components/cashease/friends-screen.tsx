@@ -7,23 +7,22 @@ import { PhoneFrame, PurpleScreen } from "@/components/cashease/purple-screen";
 import { ScreenHeader } from "@/components/cashease/screen-header";
 import { EmptyState, ErrorState } from "@/components/cashease/states";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Contact } from "@/lib/types";
-import { useFetch } from "@/lib/use-fetch";
+import { useContacts } from "@/lib/query/use-contacts";
 
 export function FriendsScreen() {
-	const state = useFetch<Contact[]>("/api/contacts");
+	const contactsQuery = useContacts();
 	const [query, setQuery] = useState("");
 
 	const filtered = useMemo(() => {
-		if (state.status !== "success") return [];
+		if (!contactsQuery.isSuccess) return [];
 		const q = query.trim().toLowerCase();
-		if (!q) return state.data;
-		return state.data.filter(
+		if (!q) return contactsQuery.data;
+		return contactsQuery.data.filter(
 			(c) =>
 				c.name.toLowerCase().includes(q) ||
 				c.phone.replace(/\s/g, "").includes(q.replace(/\s/g, "")),
 		);
-	}, [state, query]);
+	}, [contactsQuery.isSuccess, contactsQuery.data, query]);
 
 	return (
 		<PhoneFrame>
@@ -62,10 +61,13 @@ export function FriendsScreen() {
 						All Contact
 					</h2>
 
-					{state.status === "loading" ? (
+					{contactsQuery.isPending ? (
 						<ContactsSkeleton />
-					) : state.status === "error" ? (
-						<ErrorState message={state.error} onRetry={state.refetch} />
+					) : contactsQuery.isError ? (
+						<ErrorState
+							message={contactsQuery.error.message}
+							onRetry={contactsQuery.refetch}
+						/>
 					) : filtered.length === 0 ? (
 						<EmptyState
 							message={

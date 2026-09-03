@@ -12,14 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { formatRupiah } from "@/lib/format";
-import {
-	type Contact,
-	MIN_TRANSFER,
-	type TransferReceipt,
-	type TransferResponse,
-	type User,
-} from "@/lib/types";
-import { useFetch } from "@/lib/use-fetch";
+import { useContact } from "@/lib/query/use-contacts";
+import { useTransfer } from "@/lib/query/use-transfer";
+import { useUser } from "@/lib/query/use-user";
+import { MIN_TRANSFER, type TransferReceipt } from "@/lib/types";
 
 type Validation =
 	| { kind: "empty" }
@@ -43,59 +39,34 @@ function validate(
 
 export function SetAmountScreen({ contactId }: { contactId: string }) {
 	const router = useRouter();
-	const contactState = useFetch<Contact>(`/api/contacts/${contactId}`);
-	const userState = useFetch<User>("/api/user");
+	const contactQuery = useContact(contactId);
+	const userQuery = useUser();
 
 	const [amount, setAmount] = useState<number | null>(null);
 	const [note, setNote] = useState("");
-	const [submitting, setSubmitting] = useState(false);
-	const [submitError, setSubmitError] = useState<string | null>(null);
 
-	const balance =
-		userState.status === "success" ? userState.data.balance : undefined;
+	const transfer = useTransfer({
+		onSuccess: (receipt: TransferReceipt) => {
+			// Hand the receipt to the success screen via sessionStorage
+			// (avoids putting transfer data in the URL, no re-fetch).
+			sessionStorage.setItem("cashease:receipt", JSON.stringify(receipt));
+			router.push("/cashease/transfer/success");
+		},
+	});
+
+	const balance = userQuery.isSuccess ? userQuery.data.balance : undefined;
 	const validation = useMemo(
 		() => validate(amount, balance),
 		[amount, balance],
 	);
 
-	const canSubmit = validation.kind === "valid" && !submitting;
+	const canSubmit = validation.kind === "valid" && !transfer.isPending;
 	// Show the inline error only once the user has typed something invalid.
 	const showError = validation.kind === "invalid";
 
-	async function handleSubmit() {
+	function handleSubmit() {
 		if (!canSubmit || amount === null) return;
-		setSubmitting(true);
-		setSubmitError(null);
-
-		try {
-			const res = await fetch("/api/transfer", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					contactId,
-					amount,
-					note: note.trim() || undefined,
-				}),
-			});
-			const data = (await res.json()) as TransferResponse;
-
-			if (!res.ok || !data.ok) {
-				setSubmitError(data.ok ? "Transfer failed" : data.error);
-				return;
-			}
-
-			// Hand the receipt to the success screen via sessionStorage
-			// (avoids putting transfer data in the URL, no re-fetch).
-			sessionStorage.setItem(
-				"cashease:receipt",
-				JSON.stringify(data satisfies TransferReceipt),
-			);
-			router.push("/cashease/transfer/success");
-		} catch {
-			setSubmitError("Network error. Please try again.");
-		} finally {
-			setSubmitting(false);
-		}
+		transfer.mutate({ contactId, amount, note: note.trim() || undefined });
 	}
 
 	return (
@@ -106,11 +77,11 @@ export function SetAmountScreen({ contactId }: { contactId: string }) {
 						title="Set Amount"
 						backHref="/cashease/transfer/friends"
 						action={
-							userState.status === "success" ? (
+							userQuery.isSuccess ? (
 								<div className="flex flex-col items-end text-white">
 									<span className="text-xs text-white/70">Your Balance</span>
 									<span className="text-sm font-bold tabular-nums">
-										{formatRupiah(userState.data.balance)}
+										{formatRupiah(userQuery.data.balance)}
 									</span>
 								</div>
 							) : (
@@ -121,7 +92,7 @@ export function SetAmountScreen({ contactId }: { contactId: string }) {
 				}
 			>
 				{/* recipient header */}
-				{contactState.status === "loading" ? (
+				{contactQuery.isPending ? (
 					<div className="flex items-center gap-3">
 						<Skeleton className="size-[60px] rounded-full" />
 						<div className="flex flex-col gap-1.5">
@@ -129,28 +100,28 @@ export function SetAmountScreen({ contactId }: { contactId: string }) {
 							<Skeleton className="h-4 w-24" />
 						</div>
 					</div>
-				) : contactState.status === "error" ? (
+				) : contactQuery.isError ? (
 					<ErrorState
-						message={contactState.error}
-						onRetry={contactState.refetch}
+						message={contactQuery.error.message}
+						onRetry={contactQuery.refetch}
 					/>
-				) : (
+				) : contactQuery.isSuccess ? (
 					<div className="flex items-center gap-3">
 						<UserAvatar
-							name={contactState.data.name}
-							src={contactState.data.avatar}
+							name={contactQuery.data.name}
+							src={contactQuery.data.avatar}
 							className="size-[60px]"
 						/>
 						<div className="flex flex-col">
 							<span className="text-lg font-medium text-ink">
-								{contactState.data.name}
+								{contactQuery.data.name}
 							</span>
 							<span className="text-muted-foreground">
-								{contactState.data.phone}
+								{contactQuery.data.phone}
 							</span>
 						</div>
 					</div>
-				)}
+				) : null}
 
 				<AmountInput
 					value={amount}
@@ -180,13 +151,13 @@ export function SetAmountScreen({ contactId }: { contactId: string }) {
 					/>
 				</div>
 
-				{submitError ? (
+				{transfer.isError ? (
 					<p
 						className="flex items-center gap-1.5 text-sm text-danger"
 						role="alert"
 					>
 						<AlertCircle className="size-4" />
-						{submitError}
+						{transfer.error.message}
 					</p>
 				) : null}
 
@@ -196,7 +167,7 @@ export function SetAmountScreen({ contactId }: { contactId: string }) {
 					disabled={!canSubmit}
 					className="mt-auto h-auto w-full rounded-full py-4 text-lg font-bold"
 				>
-					{submitting ? "Processing…" : "Proceed to Transfer"}
+					{transfer.isPending ? "Processing…" : "Proceed to Transfer"}
 				</Button>
 			</PurpleScreen>
 		</PhoneFrame>

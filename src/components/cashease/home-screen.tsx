@@ -15,8 +15,8 @@ import { EmptyState, ErrorState } from "@/components/cashease/states";
 import { TransactionRow } from "@/components/cashease/transaction-row";
 import { UserAvatar } from "@/components/cashease/user-avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Contact, Transaction, User } from "@/lib/types";
-import { useFetch } from "@/lib/use-fetch";
+import { useContacts } from "@/lib/query/use-contacts";
+import { useTransactions, useUser } from "@/lib/query/use-user";
 
 const MENU = [
 	{ label: "Transfer", icon: Send, href: "/cashease/transfer" },
@@ -27,9 +27,9 @@ const MENU = [
 
 export function HomeScreen() {
 	// Parallel fetches — user and transactions are independent, no waterfall.
-	const userState = useFetch<User>("/api/user");
-	const txState = useFetch<Transaction[]>("/api/transactions");
-	const contactsState = useFetch<Contact[]>("/api/contacts");
+	const userQuery = useUser();
+	const txQuery = useTransactions();
+	const contactsQuery = useContacts();
 
 	return (
 		<PhoneFrame>
@@ -40,9 +40,9 @@ export function HomeScreen() {
 						<ArrowLeftRight className="size-6" />
 						<span className="font-heading text-xl font-bold">CashEase</span>
 					</div>
-					{userState.status === "success" ? (
+					{userQuery.isSuccess ? (
 						<span className="rounded-full bg-white/15 px-3 py-1 text-sm font-bold">
-							{userState.data.points.toLocaleString("id-ID")} Points
+							{userQuery.data.points.toLocaleString("id-ID")} Points
 						</span>
 					) : (
 						<Skeleton className="h-7 w-24 rounded-full bg-white/20" />
@@ -51,20 +51,20 @@ export function HomeScreen() {
 
 				{/* balance */}
 				<div className="py-6">
-					{userState.status === "loading" ? (
+					{userQuery.isPending ? (
 						<div className="flex flex-col gap-2 px-5">
 							<Skeleton className="h-4 w-24 bg-white/20" />
 							<Skeleton className="h-9 w-52 bg-white/20" />
 						</div>
-					) : userState.status === "error" ? (
+					) : userQuery.isError ? (
 						<div className="px-5">
 							<ErrorState
-								message={userState.error}
-								onRetry={userState.refetch}
+								message={userQuery.error.message}
+								onRetry={userQuery.refetch}
 							/>
 						</div>
 					) : (
-						<BalanceCard balance={userState.data.balance} />
+						<BalanceCard balance={userQuery.data.balance} />
 					)}
 				</div>
 
@@ -94,7 +94,7 @@ export function HomeScreen() {
 						<h2 className="font-heading text-xl font-bold text-ink">
 							Send again
 						</h2>
-						<SendAgain state={contactsState} />
+						<SendAgain query={contactsQuery} />
 					</section>
 
 					{/* latest transactions */}
@@ -102,15 +102,18 @@ export function HomeScreen() {
 						<h2 className="font-heading text-xl font-bold text-ink">
 							Latest Transaction
 						</h2>
-						{txState.status === "loading" ? (
+						{txQuery.isPending ? (
 							<RowsSkeleton />
-						) : txState.status === "error" ? (
-							<ErrorState message={txState.error} onRetry={txState.refetch} />
-						) : txState.data.length === 0 ? (
+						) : txQuery.isError ? (
+							<ErrorState
+								message={txQuery.error.message}
+								onRetry={txQuery.refetch}
+							/>
+						) : txQuery.data.length === 0 ? (
 							<EmptyState message="No transactions yet." />
 						) : (
 							<div className="divide-y divide-border">
-								{txState.data.map((t) => (
+								{txQuery.data.map((t) => (
 									<TransactionRow key={t.id} transaction={t} />
 								))}
 							</div>
@@ -124,12 +127,8 @@ export function HomeScreen() {
 	);
 }
 
-function SendAgain({
-	state,
-}: {
-	state: ReturnType<typeof useFetch<Contact[]>>;
-}) {
-	if (state.status === "loading") {
+function SendAgain({ query }: { query: ReturnType<typeof useContacts> }) {
+	if (query.isPending) {
 		return (
 			<div className="flex gap-4">
 				{[0, 1, 2, 3].map((i) => (
@@ -141,8 +140,8 @@ function SendAgain({
 			</div>
 		);
 	}
-	if (state.status === "error") {
-		return <ErrorState message={state.error} onRetry={state.refetch} />;
+	if (query.isError) {
+		return <ErrorState message={query.error.message} onRetry={query.refetch} />;
 	}
 
 	return (
@@ -156,7 +155,7 @@ function SendAgain({
 				</span>
 				<span className="text-sm text-ink">Add New</span>
 			</Link>
-			{state.data.slice(0, 6).map((c) => (
+			{query.data.slice(0, 6).map((c) => (
 				<Link
 					key={c.id}
 					href={`/cashease/transfer/friends/${c.id}`}
