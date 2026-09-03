@@ -7,7 +7,7 @@ const SOAL = [
 		title: "Factorial Calculator",
 		desc: "Recursive factorial with typed edge cases.",
 		href: "/factorial",
-		ready: false,
+		ready: true,
 	},
 	{
 		n: 2,
