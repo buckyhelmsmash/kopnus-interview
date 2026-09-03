@@ -33,7 +33,7 @@ export default function FactorialPage() {
 	}
 
 	return (
-		<main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center gap-6 px-6 py-16">
+		<main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center gap-4 px-6 py-16">
 			<Link
 				href="/"
 				className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -90,7 +90,49 @@ export default function FactorialPage() {
 					{result ? <ResultView raw={trimmed} result={result} /> : null}
 				</CardContent>
 			</Card>
+
+			<Explanation />
 		</main>
+	);
+}
+
+function Explanation() {
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle className="text-base">How it works</CardTitle>
+			</CardHeader>
+			<CardContent className="flex flex-col gap-3 text-sm text-muted-foreground">
+				<p>
+					The factorial of a non-negative integer{" "}
+					<span className="font-mono text-foreground">n</span> (written{" "}
+					<span className="font-mono text-foreground">n!</span>) is the product
+					of every whole number from{" "}
+					<span className="font-mono text-foreground">1</span> up to{" "}
+					<span className="font-mono text-foreground">n</span>:
+				</p>
+				<p className="rounded-lg bg-muted/50 px-3 py-2 text-center font-mono text-foreground">
+					n! = n × (n−1) × (n−2) × … × 2 × 1
+				</p>
+				<p>
+					It’s naturally recursive — each factorial is{" "}
+					<span className="font-mono text-foreground">n</span> times the
+					factorial of the number below it, with{" "}
+					<span className="font-mono text-foreground">0! = 1</span> as the base
+					case that stops the recursion:
+				</p>
+				<p className="rounded-lg bg-muted/50 px-3 py-2 text-center font-mono text-foreground">
+					n! = n × (n−1)!
+				</p>
+				<div className="flex flex-col gap-1">
+					<span className="font-medium text-foreground">Example: 5!</span>
+					<p className="font-mono">
+						5! = 5 × 4 × 3 × 2 × 1 ={" "}
+						<span className="font-bold text-foreground">120</span>
+					</p>
+				</div>
+			</CardContent>
+		</Card>
 	);
 }
 
