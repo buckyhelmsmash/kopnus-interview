@@ -1,7 +1,8 @@
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Map as MapLibre, Marker } from "@vis.gl/react-maplibre";
+import { Map as MapLibre, type MapRef, Marker } from "@vis.gl/react-maplibre";
+import { useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Province } from "@/mocks/dashboard";
 
@@ -19,6 +20,8 @@ const MAP_STYLE =
 	"https://tiles.basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
 export function ProvinceMap({ provinces }: { provinces: Province[] }) {
+	const mapRef = useRef<MapRef>(null);
+
 	return (
 		<Card>
 			<CardHeader>
@@ -27,10 +30,18 @@ export function ProvinceMap({ provinces }: { provinces: Province[] }) {
 			<CardContent className="p-0">
 				<div className="h-80 w-full overflow-hidden">
 					<MapLibre
+						ref={mapRef}
 						initialViewState={{ longitude: 118, latitude: -2, zoom: 3.6 }}
 						mapStyle={MAP_STYLE}
 						attributionControl={false}
 						style={{ width: "100%", height: "100%" }}
+						// If the map initializes before its container has settled its
+						// size (a static import on first paint, or a re-rendering parent),
+						// the GL canvas reads the wrong dimensions and never requests the
+						// visible tiles — the style background paints but the map stays
+						// blank. Forcing a resize once the style has loaded recomputes the
+						// viewport against the real container size and fetches the tiles.
+						onLoad={() => mapRef.current?.resize()}
 					>
 						{provinces.map((p) => (
 							<Marker key={p.name} longitude={p.lng} latitude={p.lat}>

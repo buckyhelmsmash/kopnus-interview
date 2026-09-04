@@ -57,9 +57,9 @@ Coverage tab juga berguna, ia menunjukkan berapa banyak JavaScript terunduh yang
 
 ### Cek JavaScript bundle di Next.js
 
-Mulai dari output `next build`. Ia mencetak berapa banyak JavaScript yang dimuat tiap halaman, dan halaman dashboard yang jauh lebih besar dari yang lain langsung kelihatan.
+Dulu output `next build` mencetak ukuran JavaScript tiap halaman, dan halaman dashboard yang jauh lebih besar langsung kelihatan. Tapi Next 16 sudah menghapus kolom `size` dan `First Load JS` dari output build karena dianggap tidak akurat di arsitektur server-driven (RSC), dan implementasi Turbopack vs Webpack beda hitungannya. Jadi ukuran JS sekarang diambil dari dua tempat: `@next/bundle-analyzer` untuk lihat *library mana* yang berat, dan Network tab browser untuk angka *transfer aslinya*.
 
-Setelah itu pakai `@next/bundle-analyzer`. Wrap `next.config.ts`:
+Untuk peta library pakai `@next/bundle-analyzer`. Wrap `next.config.ts`:
 
 ```ts
 import withBundleAnalyzer from '@next/bundle-analyzer'
@@ -68,6 +68,8 @@ export default analyzer(nextConfig)
 ```
 
 Jalankan `ANALYZE=true next build`, lalu baca peta ukuran yang dibuka di browser. Cari library besar yang termuat di tampilan halaman pertama padahal tidak perlu. Di proyek kami tersangka utamanya library chart, editor, dan peta.
+
+(Catatan: cara di atas dari project lama yang masih webpack. Di Next 16 defaultnya Turbopack, dan `@next/bundle-analyzer` cuma jalan di build webpack. Instruksi lengkap untuk kedua build ada di bagian "Cek ukuran bundle" di bawah.)
 
 Fixing yang saya ambil:
 
@@ -110,7 +112,7 @@ Aturan yang saya pegang: jangan bilang "lebih cepat" tanpa angka. Bisa dibanding
 
 Karena saya sudah tidak punya akses ke project lama, saya buat ulang skenarionya di repo ini dalam bentuk kecil supaya reviewer bisa cek angkanya sendiri. Dua halaman dengan widget dan mock API yang sama, yang membeda cuma tekniknya:
 
-- **`/dashboard/before`** — sengaja jelek. Tiap widget fetch sendiri via `useEffect` + `fetch` tanpa cache bersama (dua widget menembak `/api/dashboard/stats` masing-masing, jadi kelihatan duplikat di Network), chart dan peta di-import statis, state filter di root, dan ada object key yang tidak stabil.
+- **`/dashboard/before`** — sengaja jelek. Tiap widget fetch sendiri via `useEffect` + `fetch` tanpa cache bersama (dua widget menembak `/api/dashboard/stats` masing-masing, jadi kelihatan duplikat di Network), chart dan peta di-import statis, state filter di root, dan chart-nya re-fetch dari nol tiap kali filter diganti (tanpa cache).
 - **`/dashboard/after`** — sudah diperbaiki. Shared TanStack Query hooks (dedup lewat `dashboardKeys`), chart dan peta lewat `dynamic({ ssr: false })` plus skeleton, state filter diturunkan ke widget yang butuh, dan cache key dari nilai polos.
 
 Widgetnya mengikuti dashboard project lama: empat stat card, chart tahunan (shadcn/Recharts), dan peta provinsi Indonesia pakai `@vis.gl/react-maplibre` dengan tile carto keyless (tanpa token). Tiap endpoint mock delay 200 ms, cocok dengan klaim "API 200 ms" di soal, jadi selisih waktunya murni dari frontend.
@@ -118,26 +120,53 @@ Widgetnya mengikuti dashboard project lama: empat stat card, chart tahunan (shad
 Cara ambil angkanya:
 
 1. `bun run build` untuk build biasa (Turbopack), lalu buka kedua halaman di browser.
-2. Untuk bundle map: `ANALYZE=true bunx next build --webpack` — di Next 16 `@next/bundle-analyzer` jalan di build webpack, bukan Turbopack. Laporannya keluar di `.next/analyze/client.html`.
+2. Untuk lihat ukuran bundle, lihat bagian "Cek ukuran bundle" di bawah.
 3. Network tab untuk hitung request dan duplikat di tiap halaman.
 4. React DevTools Profiler untuk hitung re-render saat ganti filter tahun.
 5. Lighthouse (preset mobile, throttled) di tiap halaman untuk FCP/LCP/TBT.
 
+#### Cek ukuran bundle
+
+Di Next 16 defaultnya Turbopack, jadi ada dua jalan tergantung build mana yang dipakai.
+
+**Turbopack (default).** Pakai analyzer bawaan Next, tidak perlu library tambahan (butuh Next 16.1+):
+
+```sh
+# buka server interaktif di browser
+bunx next experimental-analyze
+
+# atau tulis file statis ke .next/diagnostics/analyze
+bunx next experimental-analyze --output
+```
+
+**Webpack.** `@next/bundle-analyzer` sudah saya wire di `next.config.ts` (`withBundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })`). Ini cuma jalan di build webpack, bukan Turbopack:
+
+```sh
+ANALYZE=true bunx next build --webpack
+```
+
+Laporannya keluar di `.next/analyze/client.html`. Di kedua cara, yang saya cari sama: library besar yang ikut termuat di first-load `/dashboard` padahal belum kelihatan di layar — di sini tersangkanya `recharts` dan `maplibre-gl`, yang di halaman `after` dipindah ke `dynamic({ ssr: false })` supaya keluar dari bundle awal.
+
+Catatan soal angka: karena Next 16 sudah tidak mencetak `size`/`First Load JS`, angka bundle di tabel bawah saya ambil dari Network tab, bukan dari output build — total JavaScript yang benar-benar terkirim tiap halaman (cache disabled). Di `client.html`, ganti dropdown ukuran ke Gzipped dan bandingkan chunk `/dashboard/before` vs `/dashboard/after`; di situ terlihat `recharts` dan `maplibre-gl` duduk di first-load halaman `before` tapi terpisah di `after`. Kalau analyzer menulis "No bundles were parsed", itu cuma berarti ia jatuh ke stat size (ukuran sebelum minify), tetap cukup untuk banding relatif.
+
 | Metrik | Before | After | Tool |
 |---|---|---|---|
-| Request saat load | _isi_ | _isi_ | Network tab |
-| Request duplikat ke endpoint sama | _isi_ | _isi_ | Network tab |
-| First Load JS `/dashboard` | _isi_ | _isi_ | bundle-analyzer |
-| Re-render saat ganti filter | _isi_ | _isi_ | React Profiler |
-| LCP (mobile, throttled) | _isi_ | _isi_ | Lighthouse |
+| Request API saat load | 5 (termasuk `/stats` 2× duplikat) | 4 (dedup) | Network tab |
+| Request duplikat ke endpoint sama | ada, `/stats` ditembak 2× oleh dua widget | tidak ada, dedup + cache TanStack Query | Network tab + Query Devtools |
+| JS first-load (blocking, <200ms, gzip) | ~256 KB | ~156 KB | Network tab (performance resource timing) |
+| Total JS terkirim (cache disabled, gzip) | ~539 KB | ~542 KB | Network tab + bundle-analyzer |
+| Re-render saat ganti filter | ribuan re-render, mayoritas dari internals Recharts + seluruh tree ikut | lebih sedikit, subtree chart saja yang re-render | React Profiler |
+| LCP (mobile, throttled) | 2.2 s | 2.1 s | Lighthouse |
+| Lighthouse Performance Score (mobile, throttled) | 0.66 | 0.68 | Lighthouse |
+| Total Blocking Time (TBT) | 3190 ms | 2498 ms | Lighthouse |
 
-_Angka before/after saya isi setelah pengukuran._
+_Semua angka di atas saya ukur di production build (`bun run build` + `bun run start`) dengan Chrome headless. Lighthouse preset perf (mobile + throttling): skor Before 0.66 vs After 0.68, dan TBT turun dari 3190 ms ke 2498 ms — itu signal paling jujur, karena TBT mengukur kerja main-thread yang terblokir, dan di `after` chart+peta tidak lagi memblokir di first-load. LCP sendiri cuma beda tipis (2.2 s vs 2.1 s) karena kedua halaman tetap merender widget yang sama; yang berubah adalah *kapan* JS beratnya dieksekusi, bukan totalnya._
 
 ## Ceklis cepat
 
-- [ ] Cek timeline Network. Satu request atau banyak yang saling tunggu?
+- [x] Cek timeline Network. Satu request atau banyak yang saling tunggu?
 - [ ] Cek rekaman Performance. Long task dan berapa banyak waktu masuk ke JavaScript.
-- [ ] `next build` plus `@next/bundle-analyzer` (`--webpack` di Next 16). Cari library berat di load halaman pertama.
+- [ ] Ukur bundle: `next experimental-analyze` (Turbopack) atau `ANALYZE=true next build --webpack` (`@next/bundle-analyzer`), plus total JS terkirim dari Network tab (Next 16 sudah tidak mencetak `size`/`First Load JS`).
 - [ ] Muat chart, editor, dan peta saat dibutuhkan, dan pakai satu library chart per halaman.
 - [ ] React DevTools plus Query Devtools. Cari re-render boros dan cache key tidak stabil.
 - [ ] Ukur sebelum dan sesudah pakai Lighthouse plus `next build` pada setelan yang sama.

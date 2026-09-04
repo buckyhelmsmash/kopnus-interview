@@ -7,7 +7,7 @@ Four tasks (soal) in one repository, built with **Next.js (App Router) + TypeScr
 | 1 | Recursive factorial calculator | [`/factorial`](http://localhost:3000/factorial) |
 | 2 | Palindrome checker | [`/palindrome`](http://localhost:3000/palindrome) |
 | 3 | CashEase e-wallet (transfer flow + mock API) | [`/cashease`](http://localhost:3000/cashease) |
-| 4 | Performance case study (written) | [below](#soal-4--performance-case-study-studi-kasus-performa) |
+| 4 | Performance case study (written + live before/after demo) | [answer](SOAL-4-PERFORMA.id.md) · [`/dashboard/before`](http://localhost:3000/dashboard/before) · [`/dashboard/after`](http://localhost:3000/dashboard/after) |
 
 ## Tech stack
 
@@ -49,8 +49,12 @@ src/
 │   ├── cashease/             # Soal 3 app (nested transfer flow)
 │   │   ├── page.tsx          #   Home
 │   │   └── transfer/         #   type selector → friends → [contactId] → success
-│   └── api/                  # Soal 3 mock REST API (Route Handlers)
+│   ├── dashboard/            # Soal 4 before/after demo
+│   │   ├── before/           #   slow version (anti-pattern)
+│   │   └── after/            #   fixed version (TanStack Query + dynamic)
+│   └── api/                  # Soal 3 + Soal 4 mock REST API (Route Handlers)
 │       ├── user/  transactions/  contacts/  contacts/[id]/  transfer/
+│       └── dashboard/        #   Soal 4 mock endpoints (stats, yearly, provinces, activity)
 ├── components/
 │   ├── ui/                   # shadcn base components (Button, Input, Card, …)
 │   └── cashease/             # composed CashEase components + screens
@@ -94,7 +98,14 @@ A responsive wallet app based on the [CashEase Figma](https://www.figma.com/desi
 
 ### Soal 4 — Performance case study
 
-See [the written answer below](#soal-4--performance-case-study-studi-kasus-performa).
+Jawaban lengkap (7 sub-pertanyaan jadi satu alur) ada di [`SOAL-4-PERFORMA.id.md`](SOAL-4-PERFORMA.id.md), lengkap dengan angka before/after hasil pengukuran nyata.
+
+Sebagai pelengkap, jawabannya dilengkapi **demo live** berupa dua halaman dashboard dengan widget dan mock API yang sama — yang beda cuma tekniknya:
+
+- [`/dashboard/before`](http://localhost:3000/dashboard/before) — sengaja jelek: tiap widget fetch sendiri via `useEffect`, import statis, state filter di root, request duplikat.
+- [`/dashboard/after`](http://localhost:3000/dashboard/after) — sudah diperbaiki: TanStack Query hooks (dedup), `dynamic({ ssr: false })`, state filter diturunkan, cache key stabil.
+
+Cara membandingkan: buka Network tab (hitung request + duplikat), React Profiler (re-render saat ganti filter), dan Lighthouse (skor + LCP/TBT). Angka yang sudah diukur ada di tabel pada `SOAL-4-PERFORMA.id.md`.
 
 ## Assumptions
 
@@ -114,61 +125,7 @@ See [the written answer below](#soal-4--performance-case-study-studi-kasus-perfo
 
 > **Skenario:** Aplikasi digunakan oleh 100.000 users. Setelah release terbaru, halaman dashboard sangat lambat. API merespons dalam 200 ms, tetapi halaman butuh 5–8 detik untuk tampil.
 
-<!-- TODO(interview): This section MUST be filled with a REAL project story and
-     REAL before/after numbers from Bucky's experience. Hypothetical/generic
-     answers are disqualified per the brief. The scaffolding below is the
-     structure only — replace every _____ placeholder. -->
-
-### 1. Apa yang dicek terlebih dahulu
-
-_(Karena API hanya 200 ms, bottleneck ada di sisi frontend/render — bukan backend. Jelaskan bagaimana kamu mengonfirmasi ini terlebih dahulu.)_
-
-_____
-
-### 2. Membedakan masalah frontend vs backend
-
-_(Network tab: TTFB vs. waktu paint; Server-Timing header; bandingkan latency API dengan total load time.)_
-
-_____
-
-### 3. Tools yang digunakan
-
-_(Sebutkan yang spesifik: Chrome DevTools Performance, React DevTools Profiler, Lighthouse, `@next/bundle-analyzer`, output `next build`, dsb. — dan apa yang masing-masing ungkap.)_
-
-_____
-
-### 4. Yang dicek di Chrome DevTools
-
-_(Network waterfall, Performance flame chart, long tasks, main-thread blocking, LCP/TBT.)_
-
-_____
-
-### 5. Cara mengecek JavaScript bundle di proyek Next.js
-
-_(`@next/bundle-analyzer`, output per-route dari `next build`, ukuran JS per route, barrel-import bloat.)_
-
-_____
-
-### 6. Menemukan & memperbaiki unnecessary re-render
-
-_(React DevTools Profiler — highlight updates, ranked chart, "why did this render"; perbaikan: memoization, state colocation, context splitting, deferring reads.)_
-
-_____
-
-### 7. Membuktikan fix benar-benar meningkatkan performa
-
-**Contoh nyata — proyek: _____**
-
-| Metric | Tool | Before | After |
-| --- | --- | --- | --- |
-| _____ | _____ | _____ | _____ |
-| _____ | _____ | _____ | _____ |
-
-- **Konteks proyek:** _____
-- **Gejala + cara ditemukan:** _____
-- **Root cause:** _____
-- **Fix yang diterapkan:** _____
-- **Tool untuk mengukur before/after:** _____
+Jawaban lengkap dan angka before/after ada di [`SOAL-4-PERFORMA.id.md`](SOAL-4-PERFORMA.id.md). Demo live-nya di `/dashboard/before` dan `/dashboard/after` (lihat [Soal 4](#soal-4--performance-case-study) di atas).
 
 ---
 
@@ -196,6 +153,8 @@ AI yang digunakan adalah **Zed coding agent**, dibantu sejumlah *skill* (instruk
 | `vercel-composition-patterns` | Pola komposisi komponen agar reusable & mudah dirawat |
 | `web-design-guidelines` | Audit UI terhadap standar aksesibilitas & UX |
 | `shadcn` | Manajemen komponen shadcn/ui (add, compose, styling) |
+| `implement` | Mengeksekusi tiap soal dari spec, mengendarai `tdd` & `code-review` |
+| `writing-for-agents` | Panduan menyusun dokumen (README, skill) agar terstruktur & jelas |
 | Figma MCP server | Ekstraksi desain CashEase langsung dari file Figma |
 
 **3. Inisialisasi proyek (manual).** Setelah skill & tool siap, saya menjalankan sendiri `create-next-app` dan `shadcn init` (preset Nova) untuk membentuk kerangka proyek.

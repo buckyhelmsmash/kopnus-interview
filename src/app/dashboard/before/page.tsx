@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 // SIN #2: heavy widgets imported statically, so Recharts + maplibre-gl land in
 // this route's first-load JS bundle whether or not the user scrolls to them.
@@ -24,52 +23,47 @@ import type {
  * reproduce the four problems from the performance answer. It is NOT an example
  * of how the rest of this repo is written; the fixed version lives in
  * `/dashboard/after`. Each sin is marked inline.
+ *
+ * SIN #1: every widget fetches on its own with a raw useEffect + useState. There
+ * is no shared helper and no shared cache — the anti-pattern is copy-pasted into
+ * each component by hand, exactly the way it grows in a real codebase. Two
+ * widgets that need the same endpoint each fire their own request, and React
+ * StrictMode double-invokes every effect in dev, so the same endpoint is hit
+ * over and over — visible as duplicates in the Network tab.
  */
 
-/**
- * SIN #1: a per-component fetch hook using useEffect + useState, with no shared
- * cache. This is the exact pattern the production app used before the TanStack
- * Query migration. Every component that calls it fires its own request, and
- * React StrictMode double-invokes the effect in dev, so the same endpoint is
- * hit again and again — visible as duplicates in the Network tab.
- */
-function useEffectFetch<T>(url: string): { data?: T; loading: boolean } {
-	const [data, setData] = useState<T>();
+function StatsWidget() {
+	// SIN #1: raw fetch in useEffect, no shared cache.
+	const [data, setData] = useState<DashboardStats>();
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		let alive = true;
-		setLoading(true);
-		fetch(url)
+		fetch("/api/dashboard/stats")
 			.then((r) => r.json())
-			.then((json) => {
-				if (alive) {
-					setData(json as T);
-					setLoading(false);
-				}
+			.then((json: DashboardStats) => {
+				setData(json);
+				setLoading(false);
 			});
-		return () => {
-			alive = false;
-		};
-	}, [url]);
+	}, []);
 
-	return { data, loading };
-}
-
-function StatsWidget() {
-	const { data, loading } = useEffectFetch<DashboardStats>(
-		"/api/dashboard/stats",
-	);
 	return <StatCards stats={data} loading={loading} />;
 }
 
 /**
  * SIN #1 (continued): this header ALSO fetches /api/dashboard/stats, completely
- * independently of StatsWidget. No shared cache means the same endpoint is
- * requested twice over — a duplicate the Network tab shows plainly.
+ * independently of StatsWidget, with its own copy-pasted useEffect. No shared
+ * cache means the same endpoint is requested twice over — a duplicate the
+ * Network tab shows plainly.
  */
 function StatsHeader() {
-	const { data } = useEffectFetch<DashboardStats>("/api/dashboard/stats");
+	const [data, setData] = useState<DashboardStats>();
+
+	useEffect(() => {
+		fetch("/api/dashboard/stats")
+			.then((r) => r.json())
+			.then((json: DashboardStats) => setData(json));
+	}, []);
+
 	const total = data
 		? data.umkm + data.students + data.mentors + data.programs
 		: 0;
@@ -84,38 +78,55 @@ function StatsHeader() {
 }
 
 function ChartWidget({ year }: { year: string }) {
-	// SIN #4: the query key carries a value that changes on every render. Here a
-	// fresh `Date` object is baked into the key. TanStack hashes keys, and a new
-	// timestamp each render hashes differently every time, so TanStack thinks the
-	// input changed and refetches — endlessly, on every re-render (and SIN #3
-	// guarantees plenty of those). This is the class of bug that hid in the real
-	// project: a non-stable value (a Date, a new object, an inline function) slips
-	// into the key. Watch the yearly request refire without end in the Query
-	// Devtools / Network tab.
-	const { data } = useQuery({
-		queryKey: ["before-yearly", year, new Date()],
-		queryFn: () =>
-			fetch(`/api/dashboard/yearly?upto=${year}`).then(
-				(r) => r.json() as Promise<YearlyPoint[]>,
-			),
-	});
+	// SIN #1 + #3: this widget re-fetches from scratch on every render. The effect
+	// depends on `year`, which lives at the root (SIN #3), so every filter click
+	// re-renders the whole tree and re-fires this fetch — no cache, no dedup. The
+	// `t=${Date.now()}` cache-buster makes sure each refetch is a real network hit
+	// you can see in the Network tab (compare with `after`, where the same year
+	// change is served from the TanStack cache).
+	const [data, setData] = useState<YearlyPoint[]>([]);
+
+	useEffect(() => {
+		fetch(`/api/dashboard/yearly?upto=${year}&t=${Date.now()}`)
+			.then((r) => r.json())
+			.then((json: YearlyPoint[]) => setData(json));
+	}, [year]);
+
 	return (
 		<div>
 			<p className="mb-2 text-xs text-muted-foreground">Tahun aktif: {year}</p>
-			<YearlyChart data={data ?? []} />
+			<YearlyChart data={data} />
 		</div>
 	);
 }
 
 function MapWidget() {
-	const { data } = useEffectFetch<Province[]>("/api/dashboard/provinces");
-	return <ProvinceMap provinces={data ?? []} />;
+	// SIN #1: raw fetch in useEffect, no shared cache.
+	const [data, setData] = useState<Province[]>([]);
+
+	useEffect(() => {
+		fetch("/api/dashboard/provinces")
+			.then((r) => r.json())
+			.then((json: Province[]) => setData(json));
+	}, []);
+
+	return <ProvinceMap provinces={data} />;
 }
 
 function ActivityWidget() {
-	const { data, loading } = useEffectFetch<ActivityRow[]>(
-		"/api/dashboard/activity",
-	);
+	// SIN #1: raw fetch in useEffect, no shared cache.
+	const [data, setData] = useState<ActivityRow[]>();
+	const [loading, setLoading] = useState(true);
+
+	useEffect(() => {
+		fetch("/api/dashboard/activity")
+			.then((r) => r.json())
+			.then((json: ActivityRow[]) => {
+				setData(json);
+				setLoading(false);
+			});
+	}, []);
+
 	return <ActivityList rows={data} loading={loading} />;
 }
 
@@ -138,8 +149,8 @@ export default function BeforeDashboard() {
 				</h1>
 				<p className="text-sm text-muted-foreground">
 					Fetch per-komponen via useEffect, import statis, state filter di root,
-					dan key tidak stabil. Buka Network tab dan React Profiler untuk
-					melihat requestnya. Filter aktif: {year}
+					dan effect yang re-fire tiap render. Buka Network tab dan React
+					Profiler untuk melihat requestnya. Filter aktif: {year}
 				</p>
 			</header>
 
