@@ -161,12 +161,3 @@ Catatan soal angka: karena Next 16 sudah tidak mencetak `size`/`First Load JS`, 
 | Total Blocking Time (TBT) | 3190 ms | 2498 ms | Lighthouse |
 
 _Semua angka di atas saya ukur di production build (`bun run build` + `bun run start`) dengan Chrome headless. Lighthouse preset perf (mobile + throttling): skor Before 0.66 vs After 0.68, dan TBT turun dari 3190 ms ke 2498 ms — itu signal paling jujur, karena TBT mengukur kerja main-thread yang terblokir, dan di `after` chart+peta tidak lagi memblokir di first-load. LCP sendiri cuma beda tipis (2.2 s vs 2.1 s) karena kedua halaman tetap merender widget yang sama; yang berubah adalah *kapan* JS beratnya dieksekusi, bukan totalnya._
-
-## Ceklis cepat
-
-- [x] Cek timeline Network. Satu request atau banyak yang saling tunggu?
-- [ ] Cek rekaman Performance. Long task dan berapa banyak waktu masuk ke JavaScript.
-- [ ] Ukur bundle: `next experimental-analyze` (Turbopack) atau `ANALYZE=true next build --webpack` (`@next/bundle-analyzer`), plus total JS terkirim dari Network tab (Next 16 sudah tidak mencetak `size`/`First Load JS`).
-- [ ] Muat chart, editor, dan peta saat dibutuhkan, dan pakai satu library chart per halaman.
-- [ ] React DevTools plus Query Devtools. Cari re-render boros dan cache key tidak stabil.
-- [ ] Ukur sebelum dan sesudah pakai Lighthouse plus `next build` pada setelan yang sama.

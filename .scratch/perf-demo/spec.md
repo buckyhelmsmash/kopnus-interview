@@ -2,7 +2,7 @@
 
 ## Goal
 
-A pair of runnable dashboard pages inside this repo that **reproduce and then fix** the exact slowdowns described in the Soal 4 written answer (`SOAL-4-PERFORMA.id.md` / `.en.md`). One page is deliberately slow (`before`), one applies every fix (`after`). Both are profileable in Chrome DevTools / Lighthouse so the reviewer can verify the before/after numbers themselves instead of trusting a claim.
+A pair of runnable dashboard pages inside this repo that **reproduce and then fix** the exact slowdowns described in the Soal 4 written answer (`SOAL-4.md`). One page is deliberately slow (`before`), one applies every fix (`after`). Both are profileable in Chrome DevTools / Lighthouse so the reviewer can verify the before/after numbers themselves instead of trusting a claim.
 
 This exists because the candidate no longer has access to the original production app (an SME/UMKM internship-digitalization platform). The demo is a faithful, smaller reconstruction of that dashboard's shape — stat cards, a chart, a maplibre map — using the same fetching architecture the candidate actually built there.
 
@@ -77,7 +77,7 @@ The `before` variant deliberately **bypasses** this stack: each widget runs its 
 4. Network tab → count requests + duplicates on each.
 5. React Profiler → re-render count on a filter change, each variant.
 
-These fill the `_Contoh nyata dengan angka before/after menyusul._` placeholder in `SOAL-4-PERFORMA.id.md` (and the English equivalent).
+These fill the `_Contoh nyata dengan angka before/after menyusul._` placeholder in `SOAL-4.md`.
 
 ## Acceptance criteria
 
